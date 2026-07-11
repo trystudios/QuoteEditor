@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quote Language Editor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Quote Language Editor</h1>
+  <p class="sub">Open one or more cards' <strong>.json</strong> recipe files — each becomes its own editable card below. Swap text into any language, adjust font/size/color, export as JPG. Runs entirely in your browser — nothing is uploaded anywhere.</p>
+
+  <label class="dropzone" id="dropzone">
+    <input type="file" id="fileInput" accept="application/json,.json" multiple>
+    Drop one or more <strong>.json</strong> recipe files here, or click to choose
+  </label>
+
+  <div id="toolbar" class="toolbar" hidden>
+    <span class="toolbar-count" id="cardCount"></span>
+    <button class="btn btn-blue" id="exportAllBtn">Export All JPGs</button>
+    <button class="btn btn-gray" id="clearAllBtn">Clear all</button>
+  </div>
+
+  <div id="cardsContainer"></div>
+</div>
+
+<template id="cardTemplate">
+  <div class="editor card-block">
+    <div class="canvas-col">
+      <div class="card-filename"></div>
+      <canvas></canvas>
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button class="btn btn-blue export-btn">Export JPG</button>
+        <button class="btn btn-gray remove-btn">Remove</button>
+      </div>
+    </div>
+
+    <div class="controls-col">
+      <div class="card field-group">
+        <h2>Quote</h2>
+        <label>Text</label>
+        <textarea class="quoteText"></textarea>
+        <label>Font</label>
+        <div class="font-picker quoteFont">
+          <input type="text" class="font-picker-input" placeholder="Search fonts…" autocomplete="off">
+          <div class="font-picker-panel" hidden></div>
+        </div>
+        <div class="row">
+          <label style="width:34px">Size</label>
+          <input type="range" class="quoteSize" min="16" max="72">
+          <span class="size-val quoteSizeVal"></span>
+        </div>
+        <div class="row">
+          <label style="width:34px">Color</label>
+          <input type="color" class="quoteColor">
+        </div>
+        <div class="fallback-note quoteFallback">This text uses a non-Latin script — a matching Noto Sans font is loaded as backup in case "{{FIELD}}" doesn't cover every character.</div>
+      </div>
+
+      <div class="card field-group">
+        <h2>Attribution</h2>
+        <label>Text</label>
+        <textarea class="attrText" style="min-height:36px"></textarea>
+        <label>Font</label>
+        <div class="font-picker attrFont">
+          <input type="text" class="font-picker-input" placeholder="Search fonts…" autocomplete="off">
+          <div class="font-picker-panel" hidden></div>
+        </div>
+        <div class="row">
+          <label style="width:34px">Size</label>
+          <input type="range" class="attrSize" min="10" max="40">
+          <span class="size-val attrSizeVal"></span>
+        </div>
+        <div class="row">
+          <label style="width:34px">Color</label>
+          <input type="color" class="attrColor">
+        </div>
+        <div class="fallback-note attrFallback">This text uses a non-Latin script — a matching Noto Sans font is loaded as backup in case "{{FIELD}}" doesn't cover every character.</div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="google-fonts-list.js"></script>
+<script src="fonts.js"></script>
+<script src="fontpicker.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

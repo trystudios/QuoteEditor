@@ -11,7 +11,22 @@ font/size/color styling). This app opens that recipe, lets you replace the
 English text with another language, and re-exports the card as a JPG with
 the same look.
 
-## How to run it
+## Live
+
+Hosted at **https://quoteeditor.vercel.app** — just open that link, no setup
+needed.
+
+It's deployed directly from this folder via the Vercel CLI (not connected to
+GitHub), so the repo stays private while the site itself is public. To push
+an update after changing any files here:
+
+```bash
+npx vercel --prod
+```
+
+Run that from this folder — it redeploys to the same URL.
+
+## How to run it locally
 
 No install, no build step — it's plain HTML/CSS/JS.
 

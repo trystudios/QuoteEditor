@@ -4,8 +4,10 @@ const cardsContainer = document.getElementById("cardsContainer");
 const cardTemplate = document.getElementById("cardTemplate");
 const toolbar = document.getElementById("toolbar");
 const cardCountEl = document.getElementById("cardCount");
+const weekTabsEl = document.getElementById("weekTabs");
+const weekEmptyEl = document.getElementById("weekEmpty");
 
-const cards = []; // controller objects: { el, exportJpg }
+const cards = []; // controller objects: { el, exportJpg, source: 'manual'|'week', weekStart? }
 
 // ── Text wrapping (pixel-accurate, using the real font) ──────────────────
 function wrapLines(ctx, text, maxWidth) {
@@ -190,7 +192,7 @@ function loadRecipeFiles(fileList) {
       try {
         const recipe = JSON.parse(reader.result);
         const baseName = file.name.replace(/\.json$/i, "");
-        cards.push(createCard(recipe, baseName));
+        cards.push({ ...createCard(recipe, baseName), source: "manual" });
         updateCount();
       } catch (e) {
         alert(`Couldn't read "${file.name}" as a recipe JSON: ${e.message}`);
@@ -198,6 +200,80 @@ function loadRecipeFiles(fileList) {
     };
     reader.readAsText(file);
   }
+}
+
+// ── Week tabs: previous week, current/upcoming week (default), next 2 weeks ─
+let weekIndex = [];       // [{weekStart, url, fileCount}] from /api/weeks
+let activeWeekStart = null;
+const weekFileCache = {}; // weekStart -> files array, fetched lazily per tab
+
+function computeTabWeeks() {
+  const current = currentOrUpcomingMonday();
+  return [-7, 0, 7, 14].map((offset) => isoDate(addDays(current, offset)));
+}
+
+function renderTabs(tabWeeks) {
+  weekTabsEl.innerHTML = "";
+  for (const weekStart of tabWeeks) {
+    const entry = weekIndex.find((w) => w.weekStart === weekStart);
+    const btn = document.createElement("button");
+    btn.className = "week-tab" + (weekStart === activeWeekStart ? " active" : "") + (!entry ? " empty" : "");
+    btn.textContent = weekLabel(weekStart);
+    btn.addEventListener("click", () => selectWeek(weekStart, tabWeeks));
+    weekTabsEl.appendChild(btn);
+  }
+}
+
+function removeWeekCards() {
+  for (let i = cards.length - 1; i >= 0; i--) {
+    if (cards[i].source === "week") {
+      cards[i].el.remove();
+      cards.splice(i, 1);
+    }
+  }
+}
+
+async function selectWeek(weekStart, tabWeeks) {
+  activeWeekStart = weekStart;
+  renderTabs(tabWeeks);
+  removeWeekCards();
+
+  const entry = weekIndex.find((w) => w.weekStart === weekStart);
+  if (!entry) {
+    weekEmptyEl.hidden = false;
+    updateCount();
+    return;
+  }
+  weekEmptyEl.hidden = true;
+
+  try {
+    if (!weekFileCache[weekStart]) {
+      // Cache-bust: Blob's CDN caches this URL's content for up to a minute
+      // after an upload/delete, since the pathname is reused on overwrite.
+      const res = await fetch(`${entry.url}?t=${Date.now()}`, { cache: "no-store" });
+      const data = await res.json();
+      weekFileCache[weekStart] = Array.isArray(data.files) ? data.files : [];
+    }
+    for (const f of weekFileCache[weekStart]) {
+      cards.push({ ...createCard(f.recipe, f.name), source: "week", weekStart });
+    }
+  } catch (e) {
+    console.error("Failed to load week", weekStart, e);
+  }
+  updateCount();
+}
+
+async function initWeekTabs() {
+  const tabWeeks = computeTabWeeks();
+  try {
+    const res = await fetch("/api/weeks");
+    const data = await res.json();
+    weekIndex = Array.isArray(data.weeks) ? data.weeks : [];
+  } catch (e) {
+    weekIndex = []; // e.g. running locally without the /api functions
+  }
+  renderTabs(tabWeeks);
+  await selectWeek(tabWeeks[1], tabWeeks); // 2nd tab = current/upcoming week
 }
 
 // ── Wiring (page-level) ────────────────────────────────────────────────────
@@ -221,3 +297,5 @@ document.getElementById("clearAllBtn").addEventListener("click", () => {
   cards.length = 0;
   updateCount();
 });
+
+initWeekTabs();

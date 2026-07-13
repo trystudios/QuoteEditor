@@ -1,0 +1,8 @@
+{
+  "name": "quoteeditor",
+  "private": true,
+  "description": "Static Quote Language Editor + a small serverless API for the /data admin page (week uploads via Vercel Blob).",
+  "dependencies": {
+    "@vercel/blob": "^2.6.1"
+  }
+}

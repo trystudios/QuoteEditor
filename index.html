@@ -11,6 +11,9 @@
   <h1>Quote Language Editor</h1>
   <p class="sub">Open one or more cards' <strong>.json</strong> recipe files — each becomes its own editable card below. Swap text into any language, adjust font/size/color, export as JPG. Runs entirely in your browser — nothing is uploaded anywhere.</p>
 
+  <div id="weekTabs" class="week-tabs"></div>
+  <div id="weekEmpty" class="sub" hidden>No quotes uploaded yet for this week.</div>
+
   <label class="dropzone" id="dropzone">
     <input type="file" id="fileInput" accept="application/json,.json" multiple>
     Drop one or more <strong>.json</strong> recipe files here, or click to choose
@@ -61,7 +64,7 @@
       <div class="card field-group">
         <h2>Attribution</h2>
         <label>Text</label>
-        <textarea class="attrText" style="min-height:36px"></textarea>
+        <textarea class="attrText" style="min-height:50px"></textarea>
         <label>Font</label>
         <div class="font-picker attrFont">
           <input type="text" class="font-picker-input" placeholder="Search fonts…" autocomplete="off">
@@ -85,6 +88,7 @@
 <script src="google-fonts-list.js"></script>
 <script src="fonts.js"></script>
 <script src="fontpicker.js"></script>
+<script src="weekdates.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

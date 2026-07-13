@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quote Editor — Upload Weekly Quotes</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Upload Weekly Quotes</h1>
+  <p class="sub">Upload each week's recipe JSONs here — translators visiting
+    the main app automatically see the current/upcoming week's quotes, no
+    upload needed on their end.</p>
+
+  <div class="card field-group">
+    <label>Password</label>
+    <input type="password" id="password" autocomplete="off">
+  </div>
+
+  <div class="card field-group" style="margin-top:16px;">
+    <label>Week starting (Monday)</label>
+    <input type="date" id="weekStart">
+
+    <label class="dropzone" id="dropzone" style="margin-top:12px;">
+      <input type="file" id="fileInput" accept="application/json,.json" multiple>
+      Drop this week's <strong>.json</strong> recipe files here, or click to choose
+    </label>
+    <div id="selectedFiles"></div>
+
+    <button class="btn btn-blue" id="uploadBtn" style="margin-top:12px;">Upload week</button>
+    <div id="uploadMsg" class="admin-msg"></div>
+  </div>
+
+  <div class="card field-group" style="margin-top:16px;">
+    <h2>Currently stored weeks</h2>
+    <div id="storedList" class="stored-list"></div>
+  </div>
+</div>
+
+<script src="weekdates.js"></script>
+<script src="data.js"></script>
+</body>
+</html>

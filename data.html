@@ -28,6 +28,23 @@
     </label>
     <div id="selectedFiles"></div>
 
+    <label class="dropzone" id="jpgDropzone" style="margin-top:12px;">
+      <input type="file" id="jpgFileInput" accept="image/jpeg,.jpg,.jpeg" multiple>
+      Optional: drop the matching exported <strong>.jpg</strong> files here (same
+      name as the JSONs, e.g. "Sep 21.jpg") &mdash; if given, the email uses this
+      image directly instead of re-rendering it
+    </label>
+    <div id="selectedJpgs"></div>
+
+    <div style="margin-top:16px;">
+      <label>Youtube Link</label>
+      <label class="sub" style="display:flex; align-items:center; gap:6px; margin:6px 0;">
+        <input type="checkbox" id="sameLinkAllDays" checked>
+        Use the same link for all 5 days
+      </label>
+      <div id="unchangeLinks"></div>
+    </div>
+
     <button class="btn btn-blue" id="uploadBtn" style="margin-top:12px;">Upload week</button>
     <div id="uploadMsg" class="admin-msg"></div>
   </div>

@@ -6,7 +6,7 @@ preloaded for the current/upcoming week, or upload their own recipe JSONs —
 whichever's convenient. Nothing is uploaded anywhere except through the
 password-protected admin page.
 
-Companion project: [`QuoteMaker_v2`](https://github.com/trystudios/QuoteMaker_v2)
+Companion project: [`QuoteMaker_V3`](https://github.com/trystudios/QuoteMaker_V3)
 generates the original English quote cards and, alongside each `.jpg`,
 exports a `<name>.json` "recipe" file (the card's background image plus its
 font/size/color styling). This app opens that recipe, lets you replace the
@@ -30,11 +30,12 @@ folder first and deploy from there:
 
 ```bash
 SCRATCH=/tmp/quoteeditor_deploy
-rm -rf "$SCRATCH" && mkdir -p "$SCRATCH/api"
+rm -rf "$SCRATCH" && mkdir -p "$SCRATCH/api" "$SCRATCH/lib"
 cp index.html app.js style.css data.html data.js weekdates.js fonts.js \
    fontpicker.js google-fonts-list.js package.json package-lock.json \
    vercel.json "$SCRATCH/"
-cp api/weeks.js "$SCRATCH/api/"
+cp api/weeks.js api/send-daily.js "$SCRATCH/api/"
+cp lib/*.js "$SCRATCH/lib/"
 cd "$SCRATCH"
 vercel link --project quoteeditor --yes   # first time only
 vercel --prod --yes
@@ -46,7 +47,7 @@ on the second attempt once the file's hydrated.)
 ## Weekly quotes admin
 
 **https://quoteeditor.vercel.app/data** — password-protected page for
-uploading each week's recipe JSONs (from QuoteMaker_v2's Step 7 output). Pick
+uploading each week's recipe JSONs (from QuoteMaker_V3's Step 7 output). Pick
 the week's Monday, drop the `.json` files, upload. Up to 20 files total can be
 stored across all weeks at once — uploading more evicts the oldest stored
 week first. Existing weeks can be deleted from the same page.
@@ -55,6 +56,72 @@ The homepage shows 4 week tabs — the previous week, the current/upcoming
 week (selected by default), and the next 2 weeks — computed from today's
 date, so it automatically rolls forward each Monday without needing a manual
 update. Tabs for weeks with no uploaded data still show, just empty.
+
+Files (both the drag-and-drop editor and the `/data` admin page) are always
+sorted by the "`<Mon> <Day>`" name in their filename (e.g. "Sep 21"), not by
+drop/upload order — this also correctly handles a week spanning two months
+(e.g. Sep 29, Sep 30, Oct 1).
+
+For each weekday, `/data` also has a **Youtube Link** field — the URL for
+that day's "Un-change" header link — plus an auto-filled, editable link-text
+field (fetched from the video's title via YouTube's oEmbed endpoint; edit it
+if you want different wording). A checkbox mirrors Monday's link+text across
+all 5 days, or uncheck it to set each day independently.
+
+**Optional: drop the matching exported `.jpg` files** (same name as the
+JSONs, e.g. "Sep 21.jpg") into the second dropzone on `/data`. If provided,
+the daily email uses that exact image directly instead of re-rendering it
+server-side — see "Daily email automation" below for why that matters.
+
+## Daily email automation
+
+A Vercel Cron job (`vercel.json`) hits `/api/send-daily` Monday–Friday at
+**8:15 AM IST** (`45 2 * * 1-5` in UTC — IST has no DST, so this stays
+accurate year-round). Each run:
+
+1. Figures out today's date in IST and that week's Monday.
+2. Loads that week's stored data (files + Un-change links) from `/data`.
+3. Finds the recipe file matching today's date.
+4. Gets today's image — **prefers an uploaded `jpg_b64`** (the exact
+   already-exported card) **over rendering** from the recipe JSON. The
+   renderer (`lib/render-quote.js`, using `@napi-rs/canvas`) works, but has
+   a known intermittent bug: under Vercel's warm-serverless-instance reuse,
+   repeated back-to-back renders can occasionally register Google Fonts
+   subsets incorrectly, producing tofu/box glyphs for specific characters.
+   Providing the JPG sidesteps this entirely and is the recommended path;
+   the renderer remains as a fallback for any day without one.
+5. Builds the email (`lib/email-template.js`) and sends it via Gmail SMTP
+   (`lib/gmail-send.js`, using an App Password — no OAuth/Cloud billing
+   needed) to `DAILY_EMAIL_TO`.
+
+**Required env vars** (set locally in `.env.local`, and in Vercel's project
+settings for production — see `vercel env add`):
+
+- `GMAIL_USER` — the sending Gmail address (e.g. `premrawatquotes@gmail.com`)
+- `GMAIL_APP_PASSWORD` — a Gmail [App Password](https://myaccount.google.com/apppasswords)
+  for that account (needs 2-Step Verification enabled first)
+- `CRON_SECRET` — any random string; Vercel signs real cron requests with it
+  automatically, and manual test calls need it as a `?secret=` query param
+- `DAILY_EMAIL_TO` — the recipient (a Google Group address for production;
+  point it at your own address while testing)
+
+**Testing without waiting for the schedule:**
+
+```bash
+# Dry run - shows what would happen, sends nothing:
+curl "https://quoteeditor.vercel.app/api/send-daily?date=2026-09-22&dryRun=1&secret=<CRON_SECRET>"
+
+# Real send for a specific date:
+curl "https://quoteeditor.vercel.app/api/send-daily?date=2026-09-22&secret=<CRON_SECRET>"
+```
+
+Both accept `?date=YYYY-MM-DD` to target any weekday, regardless of what
+today actually is. The response includes `usedProvidedJpg` so you can
+confirm whether a day used the uploaded JPG or fell back to rendering.
+
+Note: Vercel's Hobby plan doesn't guarantee cron fires at the exact minute
+(it can run up to ~59 minutes late) — check `vercel crons ls` or the
+dashboard's Cron Jobs tab to confirm a run actually happened.
 
 ## How to run it locally
 
@@ -89,6 +156,9 @@ page, no week tabs), any static file server works fine, e.g.
   Arabic) if the chosen font is missing glyphs for the language you typed
 - Export one card or all loaded cards as JPGs, named after their original
   date (e.g. `Jul 13.jpg`)
+- A "Quote of the Day" email goes out automatically Mon-Fri at 8:15 AM IST,
+  built from `/data`'s stored week (600px-wide image, header/footer links,
+  the editable per-day Youtube Link) — see "Daily email automation" above
 
 ## Usage guide (for non-technical users)
 

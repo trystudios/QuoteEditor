@@ -1,7 +1,12 @@
 // Backs the /data admin page and the homepage's week tabs.
 //
 // Data model in Vercel Blob: one deterministic-pathname blob per week,
-// weeks/<weekStart>.json -> { weekStart, files: [{ name, recipe }, ...] }.
+// weeks/<weekStart>.json -> { weekStart, files: [{ name, recipe, jpg_b64? }, ...],
+// unchangeLinks: { "<YYYY-MM-DD>": { url, title }, ... } } - one optional
+// per-weekday "Un-change" YouTube link (+ its editable link text) used by
+// the daily email send. `jpg_b64`, if provided from /data, is the already-
+// exported card - the daily send uses it directly instead of re-rendering
+// from `recipe` (see api/send-daily.js).
 //
 // There's deliberately no separate "index" blob: list({prefix:'weeks/'}) is
 // a live listing of what's actually in the store (unlike re-fetching a blob's
@@ -113,7 +118,19 @@ module.exports = async (req, res) => {
       }
     }
 
-    await put(pathFor(body.weekStart), JSON.stringify({ weekStart: body.weekStart, files }), {
+    const unchangeLinks = {};
+    if (body.unchangeLinks && typeof body.unchangeLinks === "object") {
+      for (const [date, entry] of Object.entries(body.unchangeLinks)) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !entry) continue;
+        const url = typeof entry === "string" ? entry : entry.url;
+        const title = typeof entry === "object" ? entry.title : "";
+        if (typeof url === "string" && url.trim()) {
+          unchangeLinks[date] = { url: url.trim(), title: (title || "").trim() };
+        }
+      }
+    }
+
+    await put(pathFor(body.weekStart), JSON.stringify({ weekStart: body.weekStart, files, unchangeLinks }), {
       access: "public",
       addRandomSuffix: false,
       allowOverwrite: true,

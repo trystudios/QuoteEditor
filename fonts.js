@@ -1,4 +1,4 @@
-// Any-Google-Font loading + script-aware fallback, mirroring QuoteMaker_v2/fonts.py
+// Any-Google-Font loading + script-aware fallback, mirroring QuoteMaker_V3/fonts.py
 // but relying on the browser's native per-glyph font-stack fallback in canvas
 // (no glyph-coverage inspection needed client-side — Chrome/Firefox/Safari all
 // substitute within a comma-separated font-family stack the same way they do

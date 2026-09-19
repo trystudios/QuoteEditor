@@ -185,21 +185,37 @@ function createCard(recipe, baseName) {
   return { el, exportJpg };
 }
 
-function loadRecipeFiles(fileList) {
-  for (const file of fileList) {
+function readFileAsText(file) {
+  return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const recipe = JSON.parse(reader.result);
-        const baseName = file.name.replace(/\.json$/i, "");
-        cards.push({ ...createCard(recipe, baseName), source: "manual" });
-        updateCount();
-      } catch (e) {
-        alert(`Couldn't read "${file.name}" as a recipe JSON: ${e.message}`);
-      }
-    };
+    reader.onload = () => resolve(reader.result);
     reader.readAsText(file);
+  });
+}
+
+// Reads every dropped file before creating any cards, so cards always
+// appear sorted by their "<Mon> <day>" name regardless of the order the
+// browser happens to finish reading them in.
+async function loadRecipeFiles(fileList) {
+  // Snapshot immediately (synchronously) - `fileList` can be the input's
+  // live FileList, which the caller may clear (input.value = "") right
+  // after calling this, before our awaited reads below finish.
+  const files = Array.from(fileList);
+  const parsed = [];
+  for (const file of files) {
+    const text = await readFileAsText(file);
+    const baseName = file.name.replace(/\.json$/i, "");
+    try {
+      parsed.push({ baseName, recipe: JSON.parse(text) });
+    } catch (e) {
+      alert(`Couldn't read "${file.name}" as a recipe JSON: ${e.message}`);
+    }
   }
+  sortByDateName(parsed, (p) => p.baseName);
+  for (const { baseName, recipe } of parsed) {
+    cards.push({ ...createCard(recipe, baseName), source: "manual" });
+  }
+  updateCount();
 }
 
 // ── Week tabs: previous week, current/upcoming week (default), next 2 weeks ─
@@ -253,6 +269,7 @@ async function selectWeek(weekStart, tabWeeks) {
       const res = await fetch(`${entry.url}?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       weekFileCache[weekStart] = Array.isArray(data.files) ? data.files : [];
+      sortByDateName(weekFileCache[weekStart]);
     }
     for (const f of weekFileCache[weekStart]) {
       cards.push({ ...createCard(f.recipe, f.name), source: "week", weekStart });

@@ -5,7 +5,7 @@
 // The Monday of "the week you should currently be looking at": if today is
 // Sat/Sun, that's next Monday; otherwise it's the Monday of the week
 // containing today (so it doesn't roll forward again until the following
-// Sat/Sun). Matches QuoteMaker_v2's own default-week-picker logic.
+// Sat/Sun). Matches QuoteMaker_V3's own default-week-picker logic.
 function currentOrUpcomingMonday(base) {
   const d = new Date(base || new Date());
   d.setHours(0, 0, 0, 0);
@@ -26,6 +26,33 @@ function addDays(d, n) {
   const copy = new Date(d);
   copy.setDate(copy.getDate() + n);
   return copy;
+}
+
+const MONTH_NAMES = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+// Parses a "<Mon> <day>" name (e.g. "Sep 21", from QuoteMaker_V3's export
+// convention) into a sortable {month, day} pair, or null if it doesn't match.
+function parseMonthDayName(name) {
+  const m = (name || "").match(/^([A-Za-z]{3,})\s+(\d{1,2})/);
+  if (!m) return null;
+  const month = MONTH_NAMES.indexOf(m[1].toLowerCase().slice(0, 3));
+  if (month === -1) return null;
+  return { month, day: Number(m[2]) };
+}
+
+// Sorts file-like objects (anything with a `.name`) chronologically by their
+// "<Mon> <day>" name, so drag-and-drop order never depends on filesystem/
+// browser read order. Falls back to a plain string compare for names that
+// don't match the convention.
+function sortByDateName(items, getName) {
+  const name = getName || ((x) => x.name);
+  items.sort((a, b) => {
+    const da = parseMonthDayName(name(a));
+    const db = parseMonthDayName(name(b));
+    if (da && db) return da.month - db.month || da.day - db.day;
+    return name(a).localeCompare(name(b));
+  });
+  return items;
 }
 
 // "Jul 13-17, 2026" or "Jul 29-Aug 2, 2026" when the week spans two months.

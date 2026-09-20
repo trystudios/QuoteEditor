@@ -34,7 +34,7 @@ rm -rf "$SCRATCH" && mkdir -p "$SCRATCH/api" "$SCRATCH/lib"
 cp index.html app.js style.css data.html data.js weekdates.js fonts.js \
    fontpicker.js google-fonts-list.js package.json package-lock.json \
    vercel.json "$SCRATCH/"
-cp api/weeks.js api/send-daily.js "$SCRATCH/api/"
+cp api/weeks.js api/send-daily.js api/post-social.js "$SCRATCH/api/"
 cp lib/*.js "$SCRATCH/lib/"
 cd "$SCRATCH"
 vercel link --project quoteeditor --yes   # first time only
@@ -82,6 +82,10 @@ accurate year-round). Each run:
 1. Figures out today's date in IST and that week's Monday.
 2. Loads that week's stored data (files + Un-change links) from `/data`.
 3. Finds the recipe file matching today's date.
+
+(Steps 1-3 live in `lib/week-data.js`, shared with the Facebook/Instagram
+automation below — both pull the exact same day's data.)
+
 4. Gets today's image — **prefers an uploaded `jpg_b64`** (the exact
    already-exported card) **over rendering** from the recipe JSON. The
    renderer (`lib/render-quote.js`, using `@napi-rs/canvas`) works, but has
@@ -123,6 +127,51 @@ Note: Vercel's Hobby plan doesn't guarantee cron fires at the exact minute
 (it can run up to ~59 minutes late) — check `vercel crons ls` or the
 dashboard's Cron Jobs tab to confirm a run actually happened.
 
+## Social media automation (Facebook + Instagram)
+
+A second Vercel Cron job hits `/api/post-social` Monday–Friday at **6:00 PM
+IST** (`30 12 * * 1-5` UTC). It reuses the same day-lookup + JPG-priority
+logic as the email (`lib/week-data.js`), then posts that image to both:
+
+- **Facebook** (`lib/facebook-post.js`) — direct multipart upload to the
+  Page's `/photos` endpoint.
+- **Instagram** (`lib/instagram-post.js`) — a two-step create-container-
+  then-publish flow, since Instagram needs a public image URL rather than
+  raw bytes (the image gets uploaded to Vercel Blob first either way, for
+  this purpose).
+
+The caption is a fixed hashtag block (`CAPTION` in `lib/facebook-post.js`)
+— no quote text, since the image already shows it. Same caption on both
+platforms. Each platform posts independently (a Facebook failure doesn't
+block Instagram and vice versa — see the `facebookError`/`instagramError`
+fields in the response).
+
+**Credentials** live under a Meta Business Portfolio named **"Quote of the
+Day"** (there's also an older, unused "Prem Rawat Quotes" portfolio +
+app — ignore those). A Business Portfolio System User named "QuoteEditor"
+has both the Facebook Page and the Instagram Business account assigned as
+business assets, and its generated token (non-expiring) is used for both:
+
+- `FB_PAGE_ID` — the Page's numeric ID
+- `FB_PAGE_ACCESS_TOKEN` — the System User's token
+- `IG_USER_ID` — the linked Instagram Business account's numeric ID
+- `IG_ACCESS_TOKEN` — same value as `FB_PAGE_ACCESS_TOKEN` currently, kept
+  as a separate env var in case they ever need to diverge
+
+Getting a System User token permission to manage an Instagram account
+requires first completing a one-time "Log in to Instagram for additional
+settings" step in Business Settings — this is gated behind having *Full*
+(not Partial) access to that Instagram account, so if this ever needs
+redoing, check/upgrade your access level on the IG account first (Business
+Settings → Accounts → Instagram accounts → Manage).
+
+**Testing without waiting for the schedule** — same pattern as the email:
+
+```bash
+curl "https://quoteeditor.vercel.app/api/post-social?date=2026-09-22&dryRun=1&secret=<CRON_SECRET>"
+curl "https://quoteeditor.vercel.app/api/post-social?date=2026-09-22&secret=<CRON_SECRET>"
+```
+
 ## How to run it locally
 
 No install, no build step for the static parts — it's plain HTML/CSS/JS. The
@@ -159,6 +208,8 @@ page, no week tabs), any static file server works fine, e.g.
 - A "Quote of the Day" email goes out automatically Mon-Fri at 8:15 AM IST,
   built from `/data`'s stored week (600px-wide image, header/footer links,
   the editable per-day Youtube Link) — see "Daily email automation" above
+- The same day's quote also posts to Facebook and Instagram automatically
+  Mon-Fri at 6:00 PM IST — see "Social media automation" above
 
 ## Usage guide (for non-technical users)
 

@@ -2,6 +2,13 @@
 // today's quote card to the Facebook Page and Instagram, using the same
 // stored week data (and JPG-priority-over-render logic) as send-daily.js.
 //
+// X (Twitter) posting is built (lib/x-post.js, OAuth 1.0a, tested working)
+// but NOT called here - X's API now requires paid credits to actually post
+// a tweet (media upload alone succeeded, but tweet creation returned
+// "credits depleted", HTTP 402), and the user doesn't want to pay for it.
+// Re-enable by importing postToX/X_CAPTION from lib/x-post and adding it
+// to the try/catch block below, once/if there's budget for X API credits.
+//
 // Also callable manually with ?date=YYYY-MM-DD and ?dryRun=1, same as
 // send-daily.js.
 
@@ -58,6 +65,5 @@ module.exports = async (req, res) => {
   } catch (e) {
     results.instagramError = e.message;
   }
-
   res.status(200).json({ posted: true, todayIso, weekStart, file: file.name, usedProvidedJpg, imageUrl, ...results });
 };

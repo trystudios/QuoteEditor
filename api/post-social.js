@@ -15,6 +15,27 @@
 const { resolveTodayFile, getTodayImageBuffer, put } = require("../lib/week-data");
 const { postToFacebookPage, CAPTION } = require("../lib/facebook-post");
 const { postToInstagram } = require("../lib/instagram-post");
+const { sendGmail } = require("../lib/gmail-send");
+
+const ALERT_EMAIL = process.env.ALERT_EMAIL || "rajeshnrathod@gmail.com";
+
+async function alertOnFailure(todayIso, results) {
+  const failures = [];
+  if (results.facebookError) failures.push(`Facebook: ${results.facebookError}`);
+  if (results.instagramError) failures.push(`Instagram: ${results.instagramError}`);
+  if (!failures.length) return;
+  try {
+    await sendGmail({
+      to: ALERT_EMAIL,
+      subject: `QuoteEditor: social post failed for ${todayIso}`,
+      html: `<p>The ${todayIso} quote failed to post to:</p><ul>${failures
+        .map((f) => `<li>${f}</li>`)
+        .join("")}</ul>`,
+    });
+  } catch (e) {
+    // Best-effort alert - don't let a broken mailer mask the original failure.
+  }
+}
 
 function checkAuth(req) {
   if (!process.env.CRON_SECRET) return true;
@@ -45,14 +66,21 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // Instagram needs a public image URL (no direct upload); Facebook's
-  // /photos endpoint takes the raw bytes directly. Upload once, use for IG,
-  // pass the buffer straight through for FB.
-  const { url: imageUrl } = await put(`social/${todayIso}.jpg`, imageBuffer, {
-    access: "public",
-    contentType: "image/jpeg",
-    addRandomSuffix: true,
-  });
+  let imageUrl;
+  try {
+    // Instagram needs a public image URL (no direct upload); Facebook's
+    // /photos endpoint takes the raw bytes directly. Upload once, use for
+    // IG, pass the buffer straight through for FB.
+    ({ url: imageUrl } = await put(`social/${todayIso}.jpg`, imageBuffer, {
+      access: "public",
+      contentType: "image/jpeg",
+      addRandomSuffix: true,
+    }));
+  } catch (e) {
+    await alertOnFailure(todayIso, { facebookError: `Blob upload: ${e.message}`, instagramError: `Blob upload: ${e.message}` });
+    res.status(500).json({ posted: false, todayIso, weekStart, file: file.name, blobUploadError: e.message });
+    return;
+  }
 
   const results = {};
   try {
@@ -65,5 +93,6 @@ module.exports = async (req, res) => {
   } catch (e) {
     results.instagramError = e.message;
   }
+  await alertOnFailure(todayIso, results);
   res.status(200).json({ posted: true, todayIso, weekStart, file: file.name, usedProvidedJpg, imageUrl, ...results });
 };

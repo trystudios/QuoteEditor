@@ -301,6 +301,7 @@ uploadBtn.addEventListener("click", async () => {
       return;
     }
     showMsg(`Uploaded ${selectedFiles.length} file(s) for ${weekLabel(weekStartEl.value)}.`, false);
+    const uploadedWeekStart = weekStartEl.value;
     selectedFiles = [];
     selectedJpgs = [];
     renderSelectedFiles();
@@ -308,12 +309,36 @@ uploadBtn.addEventListener("click", async () => {
     // Blob content (unlike its existence in list()) takes a moment to
     // propagate, so the file count could briefly read as 0 without this.
     setTimeout(loadStoredWeeks, 1500);
+    await maybeSendWeekEmail(uploadedWeekStart);
   } catch (e) {
     showMsg("Upload failed: " + e.message, true);
   } finally {
     uploadBtn.disabled = false;
   }
 });
+
+// Fires the weekly digest email right after a successful upload - gated by
+// a confirm() since it's a real send to the full subscriber BCC list, not
+// something that should go out silently on every re-upload/correction.
+async function maybeSendWeekEmail(weekStart) {
+  const recipientCount = recipientsEl.value
+    .split(/[,\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean).length;
+  const ok = confirm(`Send the weekly digest email now to ~${recipientCount} recipient(s) for ${weekLabel(weekStart)}?`);
+  if (!ok) return;
+  try {
+    const res = await fetch(`/api/send-week?weekStart=${weekStart}&password=${encodeURIComponent(passwordEl.value)}`);
+    const data = await res.json();
+    if (!res.ok) {
+      showMsg(`Upload OK, but email failed: ${data.error || "unknown error"}`, true);
+      return;
+    }
+    showMsg(`Uploaded and emailed ${data.bcc.length} recipient(s) for ${weekLabel(weekStart)}.`, false);
+  } catch (e) {
+    showMsg(`Upload OK, but email failed: ${e.message}`, true);
+  }
+}
 
 function renderStoredWeeks(weeks) {
   storedListEl.innerHTML = "";

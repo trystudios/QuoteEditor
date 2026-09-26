@@ -12,10 +12,16 @@ const { sendGmail } = require("../lib/gmail-send");
 const { parseRecipientEmails, DEFAULT_RECIPIENTS_TEXT } = require("../lib/recipients");
 
 function checkAuth(req) {
-  if (!process.env.CRON_SECRET) return true;
   const authHeader = req.headers.authorization;
   const authQuery = req.query && req.query.secret;
-  return authHeader === `Bearer ${process.env.CRON_SECRET}` || authQuery === process.env.CRON_SECRET;
+  if (process.env.CRON_SECRET && (authHeader === `Bearer ${process.env.CRON_SECRET}` || authQuery === process.env.CRON_SECRET)) {
+    return true;
+  }
+  // /data's upload flow triggers this straight from the browser with the
+  // same admin password already entered there - no CRON_SECRET involved.
+  const passwordQuery = req.query && req.query.password;
+  if (process.env.UPLOAD_PASSWORD && passwordQuery === process.env.UPLOAD_PASSWORD) return true;
+  return !process.env.CRON_SECRET && !process.env.UPLOAD_PASSWORD;
 }
 
 function subjectFor(week) {

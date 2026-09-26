@@ -130,7 +130,9 @@ module.exports = async (req, res) => {
       }
     }
 
-    await put(pathFor(body.weekStart), JSON.stringify({ weekStart: body.weekStart, files, unchangeLinks }), {
+    const recipients = typeof body.recipients === "string" ? body.recipients : "";
+
+    await put(pathFor(body.weekStart), JSON.stringify({ weekStart: body.weekStart, files, unchangeLinks, recipients }), {
       access: "public",
       addRandomSuffix: false,
       allowOverwrite: true,

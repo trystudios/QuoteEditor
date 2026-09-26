@@ -11,6 +11,33 @@ const unchangeLinksEl = document.getElementById("unchangeLinks");
 const jpgDropzone = document.getElementById("jpgDropzone");
 const jpgFileInput = document.getElementById("jpgFileInput");
 const selectedJpgsEl = document.getElementById("selectedJpgs");
+const recipientsEl = document.getElementById("recipients");
+
+// Same default list lib/recipients.js falls back to for weeks uploaded
+// before this field existed - kept in sync manually (small, rarely edited).
+const DEFAULT_RECIPIENTS_TEXT = "anita jagodzinska <marianita.j@wp.pl>, hsing211 <hsing211@yahoo.com.tw>, Jean-Pierre PHILIPPE <jeanpierrephi@gmail.com>, Rajesh Rathod <rajeshnrathod@gmail.com>, Peter Boiu German Quotes <peter-boiu@gmx.de>, Lobo Gmail <tovoheryrazaka@gmail.com>, Marc G <ararasgrimberg@gmail.com>, Lobo Razakamanana <loborazaka@hotmail.com>, Rafal <rafalewski@gmail.com>, Viviane Vohangy Ratsisetraina <viviane.ratsisetraina@yahoo.fr>, Géraldi <tag_antonello@hotmail.com>, Carlos Saraiva <carlos.c.saraiva@gmail.com>, Delia Ortega <palabrasdepaz4@gmail.com>, Sergio Pereira <marzollini@msn.com>, Giorgos Dimitriou <drgiorgis@rocketmail.com>, Tiki regwun <regwuntiki@gmail.com>, Jean-Luc MARÉCHAL <jelumar00@gmail.com>, Julio Perez <juliodemenezespinto91@gmail.com>, Michael Dorfman <mdorfman7@gmail.com>, Umul choironi - Bahasa Indonesia <shidra12@gmail.com>, Ziga Valetic Slovenian Quotes <ziga.valetic@gmail.com>, Bahaa Zahnan <zahnanb@gmail.com>";
+
+async function loadRecipientsForWeek(weekStart) {
+  recipientsEl.value = "Loading…";
+  try {
+    const res = await fetch("/api/weeks?counts=1");
+    const data = await res.json();
+    const entry = (data.weeks || []).find((w) => w.weekStart === weekStart);
+    if (entry && entry.url) {
+      const weekRes = await fetch(`${entry.url}?t=${Date.now()}`, { cache: "no-store" });
+      if (weekRes.ok) {
+        const week = await weekRes.json();
+        if (typeof week.recipients === "string" && week.recipients.trim()) {
+          recipientsEl.value = week.recipients;
+          return;
+        }
+      }
+    }
+  } catch (e) {
+    // fall through to default below
+  }
+  recipientsEl.value = DEFAULT_RECIPIENTS_TEXT;
+}
 
 let selectedFiles = []; // [{name, recipe}]
 let selectedJpgs = []; // [{name, base64}] - name matched against selectedFiles' name
@@ -126,8 +153,10 @@ weekStartEl.addEventListener("change", () => {
     weekStartEl.value = isoDate(d);
   }
   renderUnchangeInputs();
+  loadRecipientsForWeek(weekStartEl.value);
 });
 renderUnchangeInputs();
+loadRecipientsForWeek(weekStartEl.value);
 
 function renderSelectedFiles() {
   selectedFilesEl.innerHTML = "";
@@ -263,6 +292,7 @@ uploadBtn.addEventListener("click", async () => {
           return jpg ? { name: f.name, recipe: f.recipe, jpg_b64: jpg.base64 } : { name: f.name, recipe: f.recipe };
         }),
         unchangeLinks,
+        recipients: recipientsEl.value,
       }),
     });
     const data = await res.json();

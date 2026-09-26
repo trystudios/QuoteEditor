@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quote Editor — Upload Weekly Quotes</title>
 <link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -21,6 +22,13 @@
   <div class="card field-group" style="margin-top:16px;">
     <label>Week starting (Monday)</label>
     <input type="date" id="weekStart">
+
+    <label class="dropzone" id="zipDropzone" style="margin-top:12px;">
+      <input type="file" id="zipFileInput" accept="application/zip,.zip">
+      Or drop a single <strong>.zip</strong> here containing this week's 5
+      .json + 5 .jpg files &mdash; sorts them into the two lists below automatically
+    </label>
+    <div id="zipMsg" class="admin-msg"></div>
 
     <label class="dropzone" id="dropzone" style="margin-top:12px;">
       <input type="file" id="fileInput" accept="application/json,.json" multiple>

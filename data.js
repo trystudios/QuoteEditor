@@ -263,6 +263,63 @@ jpgDropzone.addEventListener("drop", (e) => {
   if (e.dataTransfer.files.length) addJpgFiles(e.dataTransfer.files);
 });
 
+// ── Optional single .zip upload (5 .json + 5 .jpg) - unzipped client-side
+// and fed into the same selectedFiles/selectedJpgs pipeline as picking the
+// files individually, so everything downstream (pairing, sorting, upload)
+// is unchanged.
+const zipDropzone = document.getElementById("zipDropzone");
+const zipFileInput = document.getElementById("zipFileInput");
+const zipMsgEl = document.getElementById("zipMsg");
+
+async function handleZipFile(file) {
+  zipMsgEl.textContent = `Reading ${file.name}…`;
+  zipMsgEl.className = "admin-msg show success";
+  try {
+    const zip = await JSZip.loadAsync(file);
+    let jsonCount = 0;
+    let jpgCount = 0;
+    for (const entry of Object.values(zip.files)) {
+      if (entry.dir) continue;
+      const baseName = entry.name.split("/").pop();
+      if (/\.json$/i.test(baseName)) {
+        const text = await entry.async("string");
+        try {
+          const recipe = JSON.parse(text);
+          selectedFiles.push({ name: baseName.replace(/\.json$/i, ""), recipe });
+          jsonCount++;
+        } catch (e) {
+          alert(`Couldn't parse "${baseName}" from the zip as JSON: ${e.message}`);
+        }
+      } else if (/\.(jpg|jpeg)$/i.test(baseName)) {
+        const base64 = await entry.async("base64");
+        selectedJpgs.push({ name: baseName.replace(/\.(jpg|jpeg)$/i, ""), base64 });
+        jpgCount++;
+      }
+    }
+    sortByDateName(selectedFiles);
+    sortByDateName(selectedJpgs);
+    renderSelectedFiles();
+    renderSelectedJpgs();
+    zipMsgEl.textContent = `Unzipped ${jsonCount} JSON + ${jpgCount} JPG file(s) from ${file.name}.`;
+  } catch (e) {
+    zipMsgEl.textContent = `Couldn't read ${file.name} as a zip: ${e.message}`;
+    zipMsgEl.className = "admin-msg show error";
+  }
+}
+
+zipFileInput.addEventListener("change", () => {
+  if (zipFileInput.files.length) handleZipFile(zipFileInput.files[0]);
+  zipFileInput.value = "";
+});
+zipDropzone.addEventListener("dragover", (e) => { e.preventDefault(); zipDropzone.classList.add("drag"); });
+zipDropzone.addEventListener("dragleave", () => zipDropzone.classList.remove("drag"));
+zipDropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  zipDropzone.classList.remove("drag");
+  const file = e.dataTransfer.files[0];
+  if (file) handleZipFile(file);
+});
+
 function showMsg(text, isError) {
   uploadMsgEl.textContent = text;
   uploadMsgEl.className = "admin-msg show " + (isError ? "error" : "success");

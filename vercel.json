@@ -1,5 +1,10 @@
 {
   "cleanUrls": true,
+  "functions": {
+    "api/post-social.js": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/send-daily",
